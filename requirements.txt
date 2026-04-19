@@ -1,0 +1,9 @@
+requests
+scapy
+numpy
+pandas
+scikit-learn
+joblib
+Flask
+Flask-CORS
+pymongo

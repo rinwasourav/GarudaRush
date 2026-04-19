@@ -1,0 +1,13 @@
+# Virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# OS generated files
+.DS_Store
+.DS_Store?
+
+# Datasets
+*.csv
+# If you want to use Git LFS for models, or ignore them
+# *.pkl
