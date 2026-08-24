@@ -1,13 +1,65 @@
-# Virtual environment
-venv/
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 
-# OS generated files
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyTest & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+*.py.cover
+.hypothesis/
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Machine Learning & Heavy Datasets (>100MB files prohibited on GitHub)
+*.csv
+!tests/fixtures/*.csv
+
+# IDE & OS specific
 .DS_Store
 .DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
 
-# Datasets
-*.csv
-# If you want to use Git LFS for models, or ignore them
-# *.pkl
+# Archives & Temporary files
+Archive.zip
+*.tar.gz
+*.log

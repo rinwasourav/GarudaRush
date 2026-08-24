@@ -1,0 +1,2324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>GarudaRush — Multi-Agent DDoS Console</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════ */
+:root {
+  --bg:       #08131d;
+  --bg2:      rgba(12, 24, 35, 0.94);
+  --bg3:      rgba(16, 31, 44, 0.96);
+  --bg4:      rgba(22, 40, 56, 0.98);
+  --border:   rgba(148, 163, 184, 0.14);
+  --border2:  rgba(45, 212, 191, 0.24);
+
+  --cyan:     #4fd1c5;
+  --cyan2:    #38bdf8;
+  --green:    #34d399;
+  --red:      #fb7185;
+  --amber:    #f59e0b;
+  --violet:   #a78bfa;
+
+  --c-dim:  rgba(79, 209, 197, 0.12);
+  --g-dim:  rgba(52, 211, 153, 0.12);
+  --r-dim:  rgba(251, 113, 133, 0.12);
+  --a-dim:  rgba(245, 158, 11, 0.12);
+  --v-dim:  rgba(167, 139, 250, 0.12);
+
+  --text:     #e6edf6;
+  --text-dim: #93a8bf;
+  --text-soft:#6f879f;
+  --tint-blue: rgba(56, 189, 248, 0.08);
+  --tint-teal: rgba(45, 212, 191, 0.08);
+  --tint-amber: rgba(245, 158, 11, 0.07);
+  --mono:     'IBM Plex Mono', monospace;
+  --display:  'Sora', sans-serif;
+  --body:     'Manrope', sans-serif;
+
+  --sidebar-w: 260px;
+  --header-h:  52px;
+  --shadow-lg: 0 18px 48px rgba(2, 8, 15, 0.34);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(56,189,248,0.10), transparent 24%),
+    radial-gradient(circle at top right, rgba(45,212,191,0.10), transparent 22%),
+    radial-gradient(circle at 50% 100%, rgba(245,158,11,0.06), transparent 18%),
+    linear-gradient(180deg, #08131d 0%, #0a1621 52%, #07111a 100%);
+  color: var(--text);
+  font-family: var(--body);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(56,189,248,0.08), transparent 20%),
+    radial-gradient(circle at 84% 20%, rgba(45,212,191,0.07), transparent 18%),
+    radial-gradient(circle at 68% 82%, rgba(245,158,11,0.05), transparent 16%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* removed scanline layer for a cleaner formal theme */
+body::after {
+  content: none;
+}
+
+/* ═══════════════════════════════════════
+   SCROLLBARS
+═══════════════════════════════════════ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.35); }
+::-webkit-scrollbar-thumb { background: rgba(79, 209, 197, 0.32); border-radius: 999px; }
+
+/* ═══════════════════════════════════════
+   HEADER
+═══════════════════════════════════════ */
+header {
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(8, 19, 30, 0.78);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 12px 32px rgba(2, 8, 15, 0.28);
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-hex {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, #38bdf8, #14b8a6);
+  clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+}
+.logo-hex svg { width: 14px; height: 14px; }
+.logo-wordmark {
+  font-family: var(--display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: #f8fbff;
+}
+.logo-sub {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  letter-spacing: 1.4px;
+}
+
+.hdr-center {
+  display: flex; align-items: center; gap: 6px;
+}
+.hdr-pill {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+  display: flex; align-items: center; gap: 5px;
+}
+.hdr-pill.ok    { border-color: rgba(0,245,160,0.3); color: var(--green); background: var(--g-dim); }
+.hdr-pill.warn  { border-color: rgba(245,158,11,0.24); color: var(--amber); background: var(--a-dim); }
+.hdr-pill.error { border-color: rgba(251,113,133,0.24);  color: var(--red);   background: var(--r-dim); }
+
+.pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+  animation: pulse-anim 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse-anim { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+#global-threat {
+  font-family: var(--display);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  transition: all 0.4s;
+  border: 1px solid rgba(52,211,153,0.26);
+  color: var(--green);
+  background: var(--g-dim);
+  cursor: pointer;
+}
+#global-threat.medium { border-color: rgba(245,158,11,0.24);  color: var(--amber); background: var(--a-dim); }
+#global-threat.high   { border-color: rgba(251,113,133,0.28);  color: var(--red);   background: var(--r-dim); box-shadow: 0 10px 24px rgba(251,113,133,0.12); }
+#global-threat.critical { border-color: rgba(251,113,133,0.40); color: var(--red); background: var(--r-dim); box-shadow: 0 12px 28px rgba(251,113,133,0.16); }
+
+#clock {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════
+   BODY LAYOUT: sidebar + main
+═══════════════════════════════════════ */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(10,22,33,0.90), rgba(8,18,28,0.96));
+  backdrop-filter: blur(14px);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-title {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+#agent-count-badge {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--c-dim);
+  border: 1px solid rgba(79, 209, 197, 0.18);
+  color: var(--cyan);
+}
+
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+/* "ALL AGENTS" + individual agent items */
+.agent-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+  position: relative;
+}
+.agent-item:hover { background: var(--bg3); }
+.agent-item.active {
+  background: var(--bg3);
+  border-left-color: var(--cyan);
+}
+.agent-item.active.threat-medium { border-left-color: var(--amber); }
+.agent-item.active.threat-high,
+.agent-item.active.threat-critical { border-left-color: var(--red); }
+
+.agent-color-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.agent-offline .agent-color-dot { opacity: 0.3; }
+
+.agent-info { flex: 1; min-width: 0; }
+.agent-name {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.5px;
+}
+.agent-meta {
+  font-family: var(--mono);
+  font-size: 0.57rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.agent-offline .agent-name { color: var(--text-dim); }
+
+.agent-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.threat-chip {
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  padding: 1px 5px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+.threat-low      { color: var(--green); background: var(--g-dim); }
+.threat-medium   { color: var(--amber); background: var(--a-dim); }
+.threat-high,
+.threat-critical { color: var(--red);   background: var(--r-dim); }
+
+.online-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+.online-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-anim 2s infinite; }
+.online-dot.off { background: var(--red); opacity: 0.5; }
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 14px;
+}
+
+/* ═══════════════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════════════ */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── View title bar ── */
+.view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.view-title {
+  font-family: var(--display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--text);
+}
+.view-sub {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.view-actions { display: flex; gap: 8px; }
+
+.interaction-hint {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 1.4px;
+  color: var(--text-dim);
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(56,189,248,0.08), rgba(45,212,191,0.08), rgba(245,158,11,0.06));
+  box-shadow: 0 10px 24px rgba(2, 8, 15, 0.18);
+  color: var(--text-dim);
+}
+
+.btn {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 1.5px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border2);
+  background: linear-gradient(180deg, rgba(15,31,43,0.94), rgba(10,24,35,0.96));
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn:hover { border-color: var(--cyan); color: #ffffff; background: rgba(17, 37, 52, 0.98); transform: translateY(-1px); }
+.btn.active-agent { border-color: var(--cyan); color: var(--cyan); background: var(--c-dim); }
+
+/* ═══════════════════════════════════════
+   STAT CARDS
+═══════════════════════════════════════ */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.stat-card {
+  background: linear-gradient(180deg, rgba(13,29,41,0.96), rgba(9,21,31,0.98));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border2);
+  box-shadow: 0 24px 44px rgba(2, 8, 15, 0.28);
+}
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--cyan);
+  opacity: 0.22;
+}
+.stat-card.r::after { background: var(--red);   opacity: 0.34; }
+.stat-card.g::after { background: var(--green); opacity: 0.28; }
+.stat-card.a::after { background: var(--amber); opacity: 0.28; }
+.stat-card.v::after { background: var(--violet); opacity: 0.28; }
+
+.stat-label {
+  font-family: var(--mono);
+  font-size: 0.57rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.stat-val {
+  font-family: var(--display);
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--cyan);
+}
+.stat-card.r .stat-val { color: var(--red); }
+.stat-card.g .stat-val { color: var(--green); }
+.stat-card.a .stat-val { color: var(--amber); }
+.stat-card.v .stat-val { color: var(--violet); }
+.stat-note {
+  font-family: var(--mono);
+  font-size: 0.57rem;
+  color: var(--text-dim);
+  margin-top: 5px;
+}
+
+/* ═══════════════════════════════════════
+   PANELS
+═══════════════════════════════════════ */
+.panel {
+  background: linear-gradient(180deg, rgba(12,27,39,0.96), rgba(8,19,29,0.98));
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(17,35,49,0.94), rgba(12,27,39,0.92));
+}
+.panel-title {
+  font-family: var(--display);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: var(--text);
+  text-transform: uppercase;
+}
+.panel-tag {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  padding: 2px 8px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+  background: var(--c-dim);
+  border: 1px solid rgba(30,64,175,0.12);
+  color: var(--cyan);
+  border-radius: 999px;
+}
+
+.interactive-panel {
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+.interactive-panel:hover {
+  transform: translateY(-2px);
+  border-color: var(--border2);
+}
+.clickable-head {
+  cursor: pointer;
+}
+.clickable-head:hover {
+  background: rgba(125, 211, 252, 0.04);
+}
+
+.panel-body { padding: 12px 14px; flex: 1; }
+.panel-body.nopd { padding: 0; }
+
+/* ═══════════════════════════════════════
+   AGENT CARDS GRID (global view)
+═══════════════════════════════════════ */
+.agent-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.agent-card {
+  background: linear-gradient(180deg, rgba(15,31,43,0.98), rgba(10,23,34,0.98));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.agent-card:hover { border-color: var(--border2); background: var(--bg4); transform: translateY(-3px); }
+.agent-card.threat-high,
+.agent-card.threat-critical { border-color: rgba(220,38,38,0.20); }
+.agent-card.threat-high:hover,
+.agent-card.threat-critical:hover { border-color: rgba(220,38,38,0.34); }
+
+.agent-card-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.agent-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.agent-card-id {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agent-card-loc {
+  font-family: var(--mono);
+  font-size: 0.57rem;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-card-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.agent-card-stat-label {
+  font-family: var(--mono);
+  font-size: 0.53rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.agent-card-stat-val {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text);
+}
+.agent-card-stat-val.red { color: var(--red); }
+
+/* ═══════════════════════════════════════
+   CHARTS ROW
+═══════════════════════════════════════ */
+.charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 10px;
+}
+
+/* ═══════════════════════════════════════
+   BOTTOM ROW
+═══════════════════════════════════════ */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ═══════════════════════════════════════
+   TABLES
+═══════════════════════════════════════ */
+.tbl-scroll {
+  overflow: auto;
+  max-height: 260px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+}
+thead th {
+  position: sticky; top: 0;
+  background: rgba(16, 31, 44, 0.98);
+  color: var(--text-dim);
+  font-weight: normal;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-size: 0.58rem;
+}
+tbody tr {
+  border-bottom: 1px solid rgba(22,32,48,0.7);
+  transition: background 0.12s, transform 0.12s;
+  cursor: pointer;
+}
+tbody tr:hover { background: rgba(125,211,252,0.06); }
+tbody td {
+  padding: 7px 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+/* agent color tag in tables */
+.agent-tag {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.55rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.bd-ddos   { color: var(--red);    background: var(--r-dim); border: 1px solid rgba(220,38,38,0.18); }
+.bd-normal { color: var(--green);  background: var(--g-dim); border: 1px solid rgba(21,128,61,0.18); }
+.bd-syn    { color: var(--violet); background: var(--v-dim); border: 1px solid rgba(124,58,237,0.18); }
+.bd-udp    { color: var(--amber);  background: var(--a-dim); border: 1px solid rgba(180,83,9,0.18); }
+.bd-icmp   { color: #0f766e;       background: rgba(15,118,110,0.08); border: 1px solid rgba(15,118,110,0.18); }
+.bd-http   { color: #166534;       background: rgba(22,101,52,0.08); border: 1px solid rgba(22,101,52,0.18); }
+.bd-unk    { color: var(--text-dim); background: rgba(100,116,139,0.10); border: 1px solid rgba(100,116,139,0.18); }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  opacity: 0.6;
+}
+
+/* confidence bar */
+.cbar { display: flex; align-items: center; gap: 6px; }
+.cbar-bg { flex: 1; height: 3px; background: var(--bg3); border-radius: 2px; overflow: hidden; min-width: 40px; }
+.cbar-fill { height: 100%; background: var(--red); border-radius: 2px; transition: width 0.4s; }
+.cbar-txt { font-size: 0.58rem; color: var(--text-dim); min-width: 36px; text-align: right; }
+
+/* legend */
+.legend { list-style: none; margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.legend li { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 0.6rem; color: var(--text-dim); }
+.legend-sq { width: 7px; height: 7px; border-radius: 1px; flex-shrink: 0; }
+.legend-val { margin-left: auto; color: var(--text); }
+
+/* flash animation for new rows */
+@keyframes row-flash { from { background: rgba(37,99,235,0.12); } to { background: transparent; } }
+.new-row { animation: row-flash 1.5s ease-out; }
+
+/* ML strip */
+.ml-strip {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  padding: 6px 14px;
+  border-top: 1px solid rgba(21,128,61,0.12);
+  color: var(--green);
+  background: rgba(21,128,61,0.05);
+  display: flex; align-items: center; gap: 7px;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+.ml-strip.bad { border-color: rgba(220,38,38,0.12); color: var(--red); background: var(--r-dim); }
+
+/* toast */
+#toast {
+  position: fixed; bottom: 20px; right: 20px;
+  font-family: var(--mono); font-size: 0.65rem;
+  padding: 8px 16px;
+  background: var(--r-dim);
+  border: 1px solid rgba(220,38,38,0.24);
+  border-radius: 12px;
+  color: var(--red);
+  letter-spacing: 1px;
+  opacity: 0; transform: translateY(8px);
+  transition: all 0.3s;
+  pointer-events: none; z-index: 1000;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 17, 0.72);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1001;
+}
+.modal-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal {
+  width: min(840px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border-radius: 24px;
+  border: 1px solid var(--border2);
+  background:
+    radial-gradient(circle at top right, rgba(56,189,248,0.08), transparent 22%),
+    radial-gradient(circle at top left, rgba(45,212,191,0.08), transparent 20%),
+    linear-gradient(180deg, rgba(12,28,40,0.99), rgba(8,20,31,0.99));
+  box-shadow: 0 30px 80px rgba(2, 8, 15, 0.42);
+}
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+.modal-kicker {
+  font-family: var(--mono);
+  font-size: 0.63rem;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.modal-title {
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 2px;
+  color: #f8fbff;
+}
+.modal-subtitle {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+.modal-close {
+  border: 1px solid var(--border2);
+  background: rgba(79, 209, 197, 0.08);
+  color: var(--text);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.modal-body {
+  padding: 22px 24px;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.detail-card {
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 16px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(15,31,43,0.96), rgba(10,24,35,0.98));
+}
+.detail-label {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.detail-value {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  color: #f8fbff;
+  margin-top: 10px;
+}
+.detail-copy {
+  font-family: var(--body);
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+.detail-section {
+  margin: 18px 0;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(79, 209, 197, 0.12);
+  background: linear-gradient(135deg, rgba(56,189,248,0.08), rgba(45,212,191,0.08), rgba(245,158,11,0.06));
+}
+.detail-section-title {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 10px;
+}
+.detail-bullets {
+  display: grid;
+  gap: 8px;
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.detail-bullet {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.detail-bullet::before {
+  content: '•';
+  color: var(--amber);
+  flex-shrink: 0;
+}
+.detail-list {
+  display: grid;
+  gap: 10px;
+}
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(14,29,41,0.98), rgba(10,23,34,0.98));
+  border: 1px solid rgba(148, 163, 184, 0.10);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+}
+.detail-row strong {
+  color: #f8fbff;
+  font-weight: 400;
+}
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 24px 24px;
+}
+.modal-btn {
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: linear-gradient(180deg, rgba(15,31,43,0.98), rgba(11,24,35,0.98));
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+.modal-btn.primary {
+  background: linear-gradient(135deg, rgba(56,189,248,0.16), rgba(20,184,166,0.14));
+  color: #f8fbff;
+}
+
+@media (max-width: 1100px) {
+  html, body { overflow: auto; }
+  .layout { flex-direction: column; }
+  .sidebar { width: 100%; max-height: 220px; border-right: none; border-bottom: 1px solid var(--border); }
+  .stat-row { grid-template-columns: repeat(2, 1fr); }
+  .charts-row, .bottom-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  header {
+    height: auto;
+    padding: 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .view-bar { flex-direction: column; align-items: flex-start; }
+  .view-actions { flex-wrap: wrap; }
+  .stat-row { grid-template-columns: 1fr; }
+  .modal-backdrop { padding: 12px; }
+  .modal-head, .modal-body, .modal-actions { padding-left: 16px; padding-right: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     HEADER
+════════════════════════════════════════ -->
+<header>
+  <div class="logo">
+    <div class="logo-hex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
+        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-wordmark">GarudaRush</div>
+      <div class="logo-sub">MULTI-AGENT DDOS CONSOLE</div>
+    </div>
+  </div>
+
+  <div class="hdr-center">
+    <div class="hdr-pill" id="h-db"><span class="pulse"></span><span>DB</span></div>
+    <div class="hdr-pill" id="h-ml"><span class="pulse"></span><span>ML</span></div>
+    <div class="hdr-pill" id="h-agents"><span class="pulse"></span><span id="h-agent-txt">0 AGENTS</span></div>
+    <div id="global-threat" onclick="openThreatModal()">THREAT: LOW</div>
+  </div>
+
+  <div id="clock">--:--:--</div>
+</header>
+
+<!-- ═══════════════════════════════════════
+     LAYOUT
+════════════════════════════════════════ -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">AGENTS</span>
+      <span id="agent-count-badge">0 / 0</span>
+    </div>
+    <div class="sidebar-list" id="sidebar-list">
+      <!-- populated by JS -->
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main" id="main-content">
+
+    <!-- VIEW BAR -->
+    <div class="view-bar">
+      <div>
+        <div class="view-title" id="view-title">GLOBAL VIEW</div>
+        <div class="view-sub"  id="view-sub">All agents — aggregated</div>
+      </div>
+      <div class="view-actions">
+        <button class="btn" onclick="exportCSV()">⬇ EXPORT CSV</button>
+        <button class="btn" onclick="selectGlobal()">⊞ ALL AGENTS</button>
+      </div>
+    </div>
+
+    <div class="interaction-hint">Click a metric, agent card, chart, alert, or flow to open a live popup with clear details and explanation.</div>
+
+    <!-- STAT CARDS -->
+    <div class="stat-row">
+      <div class="stat-card" onclick="openStatModal('packets')">
+        <div class="stat-label">Total Packets</div>
+        <div class="stat-val" id="s-pkt">—</div>
+        <div class="stat-note" id="s-prate">—</div>
+      </div>
+      <div class="stat-card" onclick="openStatModal('bytes')">
+        <div class="stat-label">Total Bytes</div>
+        <div class="stat-val" id="s-bytes">—</div>
+        <div class="stat-note" id="s-brate">—</div>
+      </div>
+      <div class="stat-card g" onclick="openStatModal('flows')">
+        <div class="stat-label">Total Flows</div>
+        <div class="stat-val" id="s-flows">—</div>
+        <div class="stat-note">windows</div>
+      </div>
+      <div class="stat-card r" onclick="openStatModal('ddos')">
+        <div class="stat-label">DDoS Events</div>
+        <div class="stat-val" id="s-ddos">—</div>
+        <div class="stat-note" id="s-alerts">— alerts</div>
+      </div>
+      <div class="stat-card a" onclick="openStatModal('syn')">
+        <div class="stat-label">Peak SYN Burst</div>
+        <div class="stat-val" id="s-syn">—</div>
+        <div class="stat-note">max syn count</div>
+      </div>
+    </div>
+
+    <!-- AGENT CARDS (global view) -->
+    <div class="panel" id="agent-cards-panel">
+      <div class="panel-head clickable-head" onclick="openPanelModal('network')">
+        <span class="panel-title">Agent Network</span>
+        <span class="panel-tag" id="agent-cards-tag">— NODES</span>
+      </div>
+      <div class="agent-cards-grid" id="agent-cards-grid">
+        <div class="empty">NO AGENTS REGISTERED</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-row">
+      <div class="panel interactive-panel" onclick="openPanelModal('rate')">
+        <div class="panel-head">
+          <span class="panel-title">Traffic Rate — Live</span>
+          <span class="panel-tag">● LIVE</span>
+        </div>
+        <div class="panel-body">
+          <canvas id="rateChart" height="100"></canvas>
+        </div>
+      </div>
+      <div class="panel interactive-panel" onclick="openPanelModal('protocol')">
+        <div class="panel-head">
+          <span class="panel-title">Protocol Mix</span>
+          <span class="panel-tag">LATEST</span>
+        </div>
+        <div class="panel-body">
+          <canvas id="protoChart" height="130"></canvas>
+          <ul class="legend" id="proto-legend"></ul>
+        </div>
+      </div>
+      <div class="panel interactive-panel" onclick="openPanelModal('attack')">
+        <div class="panel-head">
+          <span class="panel-title">Attack Types</span>
+          <span class="panel-tag">CUMULATIVE</span>
+        </div>
+        <div class="panel-body">
+          <canvas id="attackChart" height="130"></canvas>
+          <ul class="legend" id="attack-legend"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM -->
+    <div class="bottom-row">
+      <!-- Alerts -->
+      <div class="panel">
+        <div class="panel-head clickable-head" onclick="openPanelModal('alerts')">
+          <span class="panel-title">DDoS Alerts</span>
+          <span class="panel-tag" id="alerts-total-tag">0 TOTAL</span>
+        </div>
+        <div class="ml-strip" id="ml-strip" onclick="openPanelModal('health')">
+          <span>●</span><span id="ml-strip-txt">ML MODEL READY</span>
+        </div>
+        <div class="panel-body nopd">
+          <div class="tbl-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Agent</th><th>Time</th><th>Type</th>
+                  <th>Conf</th><th>Pkt/s</th><th>Entropy</th>
+                </tr>
+              </thead>
+              <tbody id="alerts-body">
+                <tr><td colspan="6"><div class="empty">AWAITING ALERTS</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Flows -->
+      <div class="panel">
+        <div class="panel-head clickable-head" onclick="openPanelModal('flows')">
+          <span class="panel-title">Recent Flows</span>
+          <span class="panel-tag" id="flows-total-tag">0 RECORDS</span>
+        </div>
+        <div class="panel-body nopd">
+          <div class="tbl-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Agent</th><th>Time</th><th>Pkt/s</th>
+                  <th>MB/s</th><th>SYN</th><th>ML</th>
+                </tr>
+              </thead>
+              <tbody id="flows-body">
+                <tr><td colspan="6"><div class="empty">AWAITING FLOWS</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- bottom padding -->
+    <div style="height:10px"></div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-backdrop" id="detail-modal-backdrop" onclick="if(event.target===this) closeDetailModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
+    <div class="modal-head">
+      <div>
+        <div class="modal-kicker" id="detail-modal-kicker">DETAIL</div>
+        <div class="modal-title" id="detail-modal-title">Dashboard Detail</div>
+        <div class="modal-subtitle" id="detail-modal-subtitle">Live context</div>
+      </div>
+      <button class="modal-close" type="button" onclick="closeDetailModal()">×</button>
+    </div>
+    <div class="modal-body" id="detail-modal-body"></div>
+    <div class="modal-actions" id="detail-modal-actions"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// State
+// ═══════════════════════════════════════
+const API      = window.location.origin;
+const POLL     = 5000;
+let activeAgent = null; // null = global
+let agentRegistry = {};          // agent_id -> agent doc
+let lastAlertTs   = 0;
+let lastFlowTs    = 0;
+let latestAgents  = [];
+let latestStats   = {};
+let latestAlerts  = [];
+let latestFlows   = [];
+let latestHealth  = {};
+let modalContext  = null;
+
+// ═══════════════════════════════════════
+// Agent palette — deterministic colors
+// ═══════════════════════════════════════
+const PALETTE = [
+  '#1d4ed8','#0f766e','#b45309','#7c3aed',
+  '#be123c','#0369a1','#166534','#9333ea',
+  '#c2410c','#0f766e','#475569','#1e40af',
+];
+const agentColor = (id) => {
+  // FIX #8: hash the agent ID so colors are stable regardless of
+  // registration order or re-registration across poll cycles.
+  let hash = 0;
+  for (let i = 0; i < (id || '').length; i++)
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return PALETTE[hash % PALETTE.length];
+};
+
+// ═══════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════
+const fmtBig  = n => n>=1e9?(n/1e9).toFixed(1)+'B':n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(Math.round(n||0));
+const fmtMB   = n => ((n||0)/1e6).toFixed(2);
+const fmtTS   = ts => new Date(ts*1000).toLocaleTimeString('en-GB',{hour12:false});
+const fmtPct  = n  => ((n||0)*100).toFixed(1)+'%';
+const toRGBA  = (hex, alpha=1) => {
+  const h = (hex || '').replace('#','');
+  if(h.length !== 6) return `rgba(0,0,0,${alpha})`;
+  const r = parseInt(h.slice(0,2),16);
+  const g = parseInt(h.slice(2,4),16);
+  const b = parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+};
+
+function clock(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB',{hour12:false}); }
+setInterval(clock,1000); clock();
+
+let toastTimer;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+function threatClass(level){ return level||'low'; }
+
+function attackBadge(type){
+  const m={
+    syn_flood:  ['bd-syn','SYN'],
+    udp_flood:  ['bd-udp','UDP'],
+    icmp_flood: ['bd-icmp','ICMP'],
+    http_flood: ['bd-http','HTTP'],
+    unknown_flood:['bd-unk','UNK'],
+    none:       ['bd-normal','NONE'],
+  };
+  const [cls,lbl]=m[type]||['bd-unk',type||'UNK'];
+  return `<span class="badge ${cls}">${lbl}</span>`;
+}
+
+function resetRateChart(){
+  // FIX #3: reset datasets array first so that any pushRate() call
+  // arriving concurrently during a scope switch sees an empty chart
+  // and rebuilds cleanly, rather than hitting a stale dataset index.
+  rateChart.data.datasets = [];
+  rateChart.data.labels   = [];
+  rateLabels.length = 0;
+  Object.keys(rateDatasets).forEach(k => delete rateDatasets[k]);
+  rateChart.update('none');
+}
+
+function resetDataTables(){
+  document.getElementById('alerts-total-tag').textContent='0 TOTAL';
+  document.getElementById('flows-total-tag').textContent='0 RECORDS';
+  document.getElementById('alerts-body').innerHTML=
+    '<tr><td colspan="6"><div class="empty">AWAITING ALERTS</div></td></tr>';
+  document.getElementById('flows-body').innerHTML=
+    '<tr><td colspan="6"><div class="empty">AWAITING FLOWS</div></td></tr>';
+}
+
+function resetScopeState(){
+  resetRateChart();
+  resetDataTables();
+  updateProto(0,0,0);
+  updateAttackChart({});
+  lastFlowTs=0;
+  lastAlertTs=0;
+}
+
+function escapeHtml(value){
+  const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'};
+  return String(value ?? '—').replace(/[&<>"']/g, (char) => map[char]);
+}
+
+function getScopeLabel(agentId = activeAgent){
+  if(!agentId) return 'Global command center';
+  const agent = agentRegistry[agentId];
+  return agent?.agent_location ? `${agentId} · ${agent.agent_location}` : agentId;
+}
+
+function renderDetailCards(cards){
+  return `<div class="detail-grid">${cards.map(card => `
+    <div class="detail-card">
+      <div class="detail-label">${escapeHtml(card.label)}</div>
+      <div class="detail-value">${escapeHtml(card.value)}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderDetailRows(rows){
+  return `<div class="detail-list">${rows.map(row => `
+    <div class="detail-row">
+      <span>${escapeHtml(row.label)}</span>
+      <strong>${escapeHtml(row.value)}</strong>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderMeaningBlock(title, items){
+  return `
+    <div class="detail-section">
+      <div class="detail-section-title">${escapeHtml(title)}</div>
+      <div class="detail-bullets">${items.map(item => `
+        <div class="detail-bullet"><span>${escapeHtml(item)}</span></div>
+      `).join('')}</div>
+    </div>
+  `;
+}
+
+function describeThreatRatio(ratio){
+  if(ratio > 0.5) return 'More than half of the observed flows are being classified as DDoS, which points to a severe and active attack condition.';
+  if(ratio > 0.2) return 'A large share of flows look malicious, so the system is seeing strong attack pressure and needs close attention.';
+  if(ratio > 0.05) return 'There are meaningful attack signals in the traffic, but they are not dominating the full stream yet.';
+  return 'Most observed traffic still looks normal, so this section is mainly acting as an early warning view.';
+}
+
+function describeConfidence(confidence){
+  if(confidence >= 0.9) return 'The model is very sure about this classification, so the signal is strong and consistent with past attack patterns.';
+  if(confidence >= 0.7) return 'The model is fairly confident, which usually means the feature mix strongly resembles suspicious traffic.';
+  if(confidence >= 0.4) return 'The model sees mixed evidence, so this should be treated as a warning signal rather than a final conclusion.';
+  return 'The model confidence is low, so the row is better read as a weak hint that deserves manual review.';
+}
+
+function describePacketRate(rate){
+  if(rate >= 10000) return 'Traffic is arriving at a very high packet rate, which is often associated with flood-style attacks or saturation events.';
+  if(rate >= 3000) return 'Traffic volume is elevated enough to matter and may indicate a burst, surge, or attack build-up.';
+  if(rate >= 500) return 'Traffic is moderate, so this section is useful for spotting changes in trend more than absolute overload.';
+  return 'Traffic is currently light, which makes it easier to notice even small anomalies if they start to rise.';
+}
+
+function openDetailModal({ kicker, title, subtitle, body, actions = [] }){
+  document.getElementById('detail-modal-kicker').textContent = kicker || 'DETAIL';
+  document.getElementById('detail-modal-title').textContent = title || 'Dashboard Detail';
+  document.getElementById('detail-modal-subtitle').textContent = subtitle || 'Live context';
+  document.getElementById('detail-modal-body').innerHTML = body || '<div class="detail-copy">No detail available yet.</div>';
+
+  const actionsEl = document.getElementById('detail-modal-actions');
+  actionsEl.innerHTML = '';
+  actions.forEach(action => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `modal-btn${action.primary ? ' primary' : ''}`;
+    btn.textContent = action.label;
+    btn.addEventListener('click', action.onClick);
+    actionsEl.appendChild(btn);
+  });
+
+  modalContext = { title };
+  document.getElementById('detail-modal-backdrop').classList.add('open');
+}
+
+function closeDetailModal(){
+  document.getElementById('detail-modal-backdrop').classList.remove('open');
+  modalContext = null;
+}
+
+function actionSwitchView(label, agentId = null, openGlobal = false){
+  return {
+    label,
+    onClick: () => {
+      closeDetailModal();
+      if(openGlobal) selectGlobal();
+      else selectAgent(agentId);
+    },
+  };
+}
+
+function actionClose(label = 'Close'){
+  return { label, onClick: () => closeDetailModal() };
+}
+
+function openThreatModal(){
+  const ratio = (latestStats.total_ddos_events || 0) / Math.max(latestStats.total_flows || 0, 1);
+  const leaders = [...latestAgents]
+    .sort((a, b) => (b.ddos_events || 0) - (a.ddos_events || 0) || (b.total_flows || 0) - (a.total_flows || 0))
+    .slice(0, 5);
+
+  openDetailModal({
+    kicker: 'Threat Map',
+    title: `Threat Level: ${(ratio > 0.5 ? 'Critical' : ratio > 0.2 ? 'High' : ratio > 0.05 ? 'Medium' : 'Low').toUpperCase()}`,
+    subtitle: getScopeLabel(),
+    body:
+      renderDetailCards([
+        { label: 'DDoS Ratio', value: `${(ratio * 100).toFixed(1)}%` },
+        { label: 'DDoS Events', value: fmtBig(latestStats.total_ddos_events || 0) },
+        { label: 'Tracked Flows', value: fmtBig(latestStats.total_flows || 0) },
+        { label: 'Online Agents', value: fmtBig(latestAgents.filter(agent => agent.online).length) },
+      ]) +
+      renderMeaningBlock('What This Section Tells You', [
+        describeThreatRatio(ratio),
+        'This popup is the fast summary of how dangerous the current traffic mix looks across the selected scope.',
+        'The top agents list helps you see where the attack activity is concentrated first.',
+      ]) +
+      `<div class="detail-copy">This popup summarizes the current attack pressure for the selected scope and highlights the noisiest agents in the fleet.</div>` +
+      renderDetailRows(
+        leaders.length
+          ? leaders.map(agent => ({
+              label: `${agent.agent_id} (${(agent.threat_level || 'low').toUpperCase()})`,
+              value: `${fmtBig(agent.ddos_events || 0)} events / ${fmtBig(agent.total_flows || 0)} flows`,
+            }))
+          : [{ label: 'Threat leaders', value: 'No agent activity yet' }]
+      ),
+    actions: [
+      activeAgent ? actionSwitchView('Back To Global', null, true) : actionClose(),
+    ],
+  });
+}
+
+function openStatModal(type){
+  const statConfig = {
+    packets: {
+      title: 'Total Packets',
+      focus: 'stat-packets',
+      cards: [
+        { label: 'Packets Seen', value: fmtBig(latestStats.total_packets || 0) },
+        { label: 'Average Rate', value: `${(latestStats.avg_packet_rate || 0).toFixed(0)} pkt/s` },
+        { label: 'Tracked Flows', value: fmtBig(latestStats.total_flows || 0) },
+      ],
+      rows: [
+        { label: 'Scope', value: getScopeLabel() },
+        { label: 'Alerts Saved', value: fmtBig(latestStats.total_alerts_saved || 0) },
+        { label: 'Peak SYN Burst', value: fmtBig(latestStats.max_syn_count || 0) },
+      ],
+      copy: 'Packet volume is useful for quickly spotting broad surges, saturation, or a sudden burst from one monitored segment.',
+      meaning: [
+        'This section tells you how much raw packet activity has passed through the selected scope.',
+        'If packets rise sharply while attack counts also rise, it usually means the load is not just busy traffic but suspicious traffic.',
+        describePacketRate(latestStats.avg_packet_rate || 0),
+      ],
+    },
+    bytes: {
+      title: 'Total Bytes',
+      focus: 'stat-bytes',
+      cards: [
+        { label: 'Bytes Seen', value: `${fmtBig(latestStats.total_bytes || 0)}B` },
+        { label: 'Average Throughput', value: `${fmtMB(latestStats.avg_byte_rate || 0)} MB/s` },
+        { label: 'DDoS Events', value: fmtBig(latestStats.total_ddos_events || 0) },
+      ],
+      rows: [
+        { label: 'Scope', value: getScopeLabel() },
+        { label: 'Flows Recorded', value: fmtBig(latestStats.total_flows || 0) },
+        { label: 'Alerts Saved', value: fmtBig(latestStats.total_alerts_saved || 0) },
+      ],
+      copy: 'Byte volume gives a clearer view of bandwidth-heavy floods, especially UDP-heavy bursts that can hide behind moderate packet counts.',
+      meaning: [
+        'This section tells you how much bandwidth the monitored traffic is consuming, not just how many packets were seen.',
+        'High byte rate with moderate packet rate can point to heavier payload floods rather than tiny packet storms.',
+        'Use this view when you want to understand network load and not only event count.',
+      ],
+    },
+    flows: {
+      title: 'Total Flows',
+      focus: 'stat-flows',
+      cards: [
+        { label: 'Flow Windows', value: fmtBig(latestStats.total_flows || 0) },
+        { label: 'Alerts Saved', value: fmtBig(latestStats.total_alerts_saved || 0) },
+        { label: 'Attack Types', value: fmtBig(Object.keys(latestStats.ddos_by_type || {}).length) },
+      ],
+      rows: [
+        { label: 'Scope', value: getScopeLabel() },
+        { label: 'Packet Avg', value: `${(latestStats.avg_packet_rate || 0).toFixed(0)} pkt/s` },
+        { label: 'Threat Level', value: document.getElementById('global-threat').textContent.replace('THREAT: ', '') },
+      ],
+      copy: 'Flow windows are the building blocks of the dashboard. Opening the focused page keeps this scope pinned while new windows stream in.',
+      meaning: [
+        'This section tells you how many analysis windows the system has processed for the current scope.',
+        'More flow windows means the dashboard has more history to summarize and compare.',
+        'It is the best section for understanding monitoring coverage over time.',
+      ],
+    },
+    ddos: {
+      title: 'DDoS Events',
+      focus: 'stat-ddos',
+      cards: [
+        { label: 'DDoS Events', value: fmtBig(latestStats.total_ddos_events || 0) },
+        { label: 'Alerts Saved', value: fmtBig(latestStats.total_alerts_saved || 0) },
+        { label: 'Attack Families', value: fmtBig(Object.keys(latestStats.ddos_by_type || {}).length) },
+      ],
+      rows: Object.entries(latestStats.ddos_by_type || {}).length
+        ? Object.entries(latestStats.ddos_by_type || {}).map(([attack, info]) => ({
+            label: attack.replaceAll('_', ' ').toUpperCase(),
+            value: `${fmtBig(info.count || 0)} at ${fmtPct(info.avg_confidence || 0)} avg conf`,
+          }))
+        : [{ label: 'Attack detail', value: 'No DDoS events recorded yet' }],
+      copy: 'These counts come from the live model outputs stored with each flow window and rolled up for the selected scope.',
+      meaning: [
+        'This section tells you how many flow windows were classified as attacks by the model.',
+        'It is the quickest way to understand how often the system is detecting suspicious behavior.',
+        'The attack-family rows below show whether one pattern is dominating or if multiple attack styles are appearing.',
+      ],
+    },
+    syn: {
+      title: 'Peak SYN Burst',
+      focus: 'stat-syn',
+      cards: [
+        { label: 'Peak SYN', value: fmtBig(latestStats.max_syn_count || 0) },
+        { label: 'DDoS Events', value: fmtBig(latestStats.total_ddos_events || 0) },
+        { label: 'Avg Packet Rate', value: `${(latestStats.avg_packet_rate || 0).toFixed(0)} pkt/s` },
+      ],
+      rows: [
+        { label: 'Scope', value: getScopeLabel() },
+        { label: 'Tracked Flows', value: fmtBig(latestStats.total_flows || 0) },
+        { label: 'ML Status', value: latestHealth.ml_model === 'ready' ? 'Model ready' : 'Model unavailable' },
+      ],
+      copy: 'A large SYN peak is one of the clearest hints of a SYN flood or connection exhaustion pattern.',
+      meaning: [
+        'This section tells you how aggressive the most intense SYN burst has been in the selected scope.',
+        'Large SYN peaks often mean many connection attempts are being fired at once, which is common in SYN flood attacks.',
+        'If this number rises with threat level and DDoS events, the signal becomes much more important.',
+      ],
+    },
+  };
+
+  const config = statConfig[type];
+  if(!config) return;
+
+  openDetailModal({
+    kicker: 'Metric Detail',
+    title: config.title,
+    subtitle: getScopeLabel(),
+    body: renderDetailCards(config.cards) + renderMeaningBlock('What This Section Tells You', config.meaning || [config.copy]) + `<div class="detail-copy">${config.copy}</div>` + renderDetailRows(config.rows),
+    actions: [
+      actionClose(),
+    ],
+  });
+}
+
+function openPanelModal(type){
+  if(type === 'network'){
+    const online = latestAgents.filter(agent => agent.online).length;
+    openDetailModal({
+      kicker: 'Agent Network',
+      title: 'Fleet Overview',
+      subtitle: getScopeLabel(null),
+      body:
+        renderDetailCards([
+          { label: 'Registered Agents', value: fmtBig(latestAgents.length) },
+          { label: 'Online Now', value: fmtBig(online) },
+          { label: 'Offline', value: fmtBig(latestAgents.length - online) },
+          { label: 'High Risk', value: fmtBig(latestAgents.filter(agent => ['high', 'critical'].includes(agent.threat_level)).length) },
+        ]) +
+        renderMeaningBlock('What This Section Tells You', [
+          'This section tells you how the monitored fleet is distributed right now: who is online, who is offline, and which agents look risky.',
+          'It is the best place to understand the health and exposure of the whole deployment in one glance.',
+          'If only a few agents are noisy, the issue may be localized. If many agents are noisy, the problem is broader.',
+        ]) +
+        `<div class="detail-copy">Each node card now acts like a launch point. Open a popup, switch to its live stream, or open a focused page in a new tab.</div>` +
+        renderDetailRows(
+          latestAgents.length
+            ? latestAgents.slice().sort((a, b) => (b.ddos_events || 0) - (a.ddos_events || 0)).slice(0, 6).map(agent => ({
+                label: `${agent.agent_id} · ${agent.online ? 'ONLINE' : 'OFFLINE'}`,
+                value: `${fmtBig(agent.ddos_events || 0)} ddos / ${(agent.threat_level || 'low').toUpperCase()}`,
+              }))
+            : [{ label: 'Agents', value: 'No registered agents yet' }]
+        ),
+      actions: [
+        actionClose(),
+      ],
+    });
+    return;
+  }
+
+  if(type === 'rate'){
+    openDetailModal({
+      kicker: 'Rate Stream',
+      title: 'Traffic Rate Timeline',
+      subtitle: getScopeLabel(),
+      body:
+        renderDetailCards([
+          { label: 'Visible Series', value: fmtBig(rateChart.data.datasets.length) },
+          { label: 'Recent Labels', value: fmtBig(rateChart.data.labels.length) },
+          { label: 'Avg Packet Rate', value: `${(latestStats.avg_packet_rate || 0).toFixed(0)} pkt/s` },
+        ]) +
+        renderMeaningBlock('What This Section Tells You', [
+          'This section tells you how traffic rate is changing over time instead of only showing a single total.',
+          'Use it to spot spikes, sudden drops, and repeated burst patterns that are easy to miss in static numbers.',
+          describePacketRate(latestStats.avg_packet_rate || 0),
+        ]) +
+        `<div class="detail-copy">The live timeline keeps appending new packet-rate samples every ${POLL / 1000} seconds. Use the focused page when you want this stream isolated.</div>` +
+        renderDetailRows(
+          latestFlows.length
+            ? latestFlows.slice(0, 6).map(flow => ({
+                label: `${flow.agent_id} @ ${fmtTS(flow.timestamp)}`,
+                value: `${Math.round(flow.packet_rate || 0)} pkt/s`,
+              }))
+            : [{ label: 'Rate stream', value: 'No live flow points yet' }]
+        ),
+      actions: [
+        actionClose(),
+      ],
+    });
+    return;
+  }
+
+  if(type === 'protocol'){
+    const latestFlow = latestFlows[0] || {};
+    openDetailModal({
+      kicker: 'Protocol Mix',
+      title: 'Latest Protocol Snapshot',
+      subtitle: getScopeLabel(),
+      body:
+        renderDetailCards([
+          { label: 'TCP', value: fmtBig(latestFlow.tcp_count || 0) },
+          { label: 'UDP', value: fmtBig(latestFlow.udp_count || 0) },
+          { label: 'ICMP', value: fmtBig(latestFlow.icmp_count || 0) },
+        ]) +
+        renderMeaningBlock('What This Section Tells You', [
+          'This section tells you which protocols dominate the latest observed traffic window.',
+          'A sudden shift toward one protocol can explain why the threat picture changed.',
+          'For example, unusually heavy UDP or ICMP volume can be a strong clue in flood-style attacks.',
+        ]) +
+        `<div class="detail-copy">This snapshot is based on the most recent flow window in the current scope, so it changes as new traffic arrives.</div>` +
+        renderDetailRows([
+          { label: 'Latest Window', value: latestFlow.timestamp ? fmtTS(latestFlow.timestamp) : 'No flow yet' },
+          { label: 'Agent', value: latestFlow.agent_id || '—' },
+          { label: 'Packet Rate', value: `${Math.round(latestFlow.packet_rate || 0)} pkt/s` },
+        ]),
+      actions: [
+        actionClose(),
+      ],
+    });
+    return;
+  }
+
+  if(type === 'attack'){
+    const attackRows = Object.entries(latestStats.ddos_by_type || {});
+    openDetailModal({
+      kicker: 'Attack Types',
+      title: 'Attack Distribution',
+      subtitle: getScopeLabel(),
+      body:
+        renderDetailCards([
+          { label: 'Attack Families', value: fmtBig(attackRows.length) },
+          { label: 'DDoS Events', value: fmtBig(latestStats.total_ddos_events || 0) },
+          { label: 'Alerts Saved', value: fmtBig(latestStats.total_alerts_saved || 0) },
+        ]) +
+        renderMeaningBlock('What This Section Tells You', [
+          'This section tells you which attack patterns the model is detecting most often.',
+          'It helps you understand whether you are dealing with one dominant attack style or several different behaviors.',
+          'That makes it useful for deciding what kind of mitigation or investigation should come next.',
+        ]) +
+        `<div class="detail-copy">The chart rolls up every detected attack type seen in the selected scope, along with average confidence from the model output.</div>` +
+        renderDetailRows(
+          attackRows.length
+            ? attackRows.map(([attack, info]) => ({
+                label: attack.replaceAll('_', ' ').toUpperCase(),
+                value: `${fmtBig(info.count || 0)} events / ${fmtPct(info.avg_confidence || 0)} conf`,
+              }))
+            : [{ label: 'Attack detail', value: 'No attack categories yet' }]
+        ),
+      actions: [
+        actionClose(),
+      ],
+    });
+    return;
+  }
+
+  if(type === 'alerts'){
+    openDetailModal({
+      kicker: 'Alert Queue',
+      title: 'Recent DDoS Alerts',
+      subtitle: getScopeLabel(),
+      body:
+        renderDetailCards([
+          { label: 'Visible Alerts', value: fmtBig(latestAlerts.length) },
+          { label: 'DDoS Events', value: fmtBig(latestStats.total_ddos_events || 0) },
+          { label: 'Threat', value: document.getElementById('global-threat').textContent.replace('THREAT: ', '') },
+        ]) +
+        renderMeaningBlock('What This Section Tells You', [
+          'This section tells you about individual attack detections that were important enough to be stored as alerts.',
+          'It is useful when you want to move from overall trends into specific incidents.',
+          'Each alert row represents a concrete event snapshot with its own confidence, rate, and agent source.',
+        ]) +
+        `<div class="detail-copy">Click any row in the table to inspect a single alert. This panel summary is useful when you want the queue as a whole.</div>` +
+        renderDetailRows(
+          latestAlerts.length
+            ? latestAlerts.slice(0, 6).map(alert => ({
+                label: `${alert.agent_id} · ${attackBadge(alert.attack_type).replace(/<[^>]+>/g, ' ').trim()}`,
+                value: `${fmtPct(alert.confidence || 0)} @ ${Math.round(alert.packet_rate || 0)} pkt/s`,
+              }))
+            : [{ label: 'Alerts', value: 'No alerts available' }]
+        ),
+      actions: [
+        actionClose(),
+      ],
+    });
+    return;
+  }
+
+  if(type === 'flows'){
+    openDetailModal({
+      kicker: 'Flow Stream',
+      title: 'Recent Flow Windows',
+      subtitle: getScopeLabel(),
+      body:
+        renderDetailCards([
+          { label: 'Visible Rows', value: fmtBig(latestFlows.length) },
+          { label: 'Flow Total', value: fmtBig(latestStats.total_flows || 0) },
+          { label: 'Avg Packet Rate', value: `${(latestStats.avg_packet_rate || 0).toFixed(0)} pkt/s` },
+        ]) +
+        renderMeaningBlock('What This Section Tells You', [
+          'This section tells you what the latest traffic windows actually looked like at feature level.',
+          'It is where you go when you want the raw operational evidence behind the charts and totals.',
+          'Clicking a row lets you inspect one specific observation instead of the whole summary.',
+        ]) +
+        `<div class="detail-copy">The recent flow list is now fully clickable, so you can inspect the feature vector behind any row or pop it into a separate page.</div>` +
+        renderDetailRows(
+          latestFlows.length
+            ? latestFlows.slice(0, 6).map(flow => ({
+                label: `${flow.agent_id} @ ${fmtTS(flow.timestamp)}`,
+                value: `${Math.round(flow.packet_rate || 0)} pkt/s / SYN ${Math.round(flow.syn_count || 0)}`,
+              }))
+            : [{ label: 'Flows', value: 'No recent flow windows yet' }]
+        ),
+      actions: [
+        actionClose(),
+      ],
+    });
+    return;
+  }
+
+  if(type === 'health'){
+    openDetailModal({
+      kicker: 'System Health',
+      title: 'Backend Status',
+      subtitle: `${window.location.origin}`,
+      body:
+        renderDetailCards([
+          { label: 'Database', value: latestHealth.status === 'ok' ? 'Connected' : 'Unavailable' },
+          { label: 'ML Model', value: latestHealth.ml_model === 'ready' ? 'Ready' : 'Unavailable' },
+          { label: 'Online Agents', value: fmtBig(latestHealth.online_agents || 0) },
+          { label: 'Timestamp', value: latestHealth.timestamp ? fmtTS(latestHealth.timestamp) : '—' },
+        ]) +
+        renderMeaningBlock('What This Section Tells You', [
+          'This section tells you whether the dashboard can trust its own backend data sources right now.',
+          'If the database or model is unavailable, the rest of the dashboard may look empty, stale, or less reliable.',
+          'Use this popup first when the dashboard seems broken or too quiet.',
+        ]) +
+        `<div class="detail-copy">Health is fetched directly from the server endpoint, so this panel is a good quick check when the dashboard looks quiet or stale.</div>` +
+        renderDetailRows([
+          { label: 'API Base', value: window.location.origin },
+          { label: 'Polling Interval', value: `${POLL / 1000}s` },
+          { label: 'Scope', value: getScopeLabel() },
+        ]),
+      actions: [
+        actionClose(),
+      ],
+    });
+  }
+}
+
+function openAgentModal(agentId){
+  const agent = agentRegistry[agentId];
+  if(!agent) return;
+
+  const ddosRatio = agent.total_flows ? `${((agent.ddos_events || 0) / agent.total_flows * 100).toFixed(1)}%` : '0.0%';
+  openDetailModal({
+    kicker: 'Agent Detail',
+    title: agent.agent_id,
+    subtitle: agent.agent_location || 'No location provided',
+    body:
+      renderDetailCards([
+        { label: 'Status', value: agent.online ? 'Online' : 'Offline' },
+        { label: 'Threat', value: (agent.threat_level || 'low').toUpperCase() },
+        { label: 'Flows', value: fmtBig(agent.total_flows || 0) },
+        { label: 'DDoS Ratio', value: ddosRatio },
+      ]) +
+      renderMeaningBlock('What This Section Tells You', [
+        'This section tells you how one specific agent is behaving compared with the rest of the system.',
+        'It helps you answer whether the suspicious traffic is isolated to one node or whether this node is only part of a wider problem.',
+        agent.online ? 'The agent is currently reporting in, so the values should be live and current.' : 'The agent is offline, so the numbers are historical until it reports back again.',
+      ]) +
+      `<div class="detail-copy">This node popup gives you a quick profile of the selected agent and lets you jump into a dedicated live view without losing the global dashboard.</div>` +
+      renderDetailRows([
+        { label: 'Agent ID', value: agent.agent_id },
+        { label: 'Location', value: agent.agent_location || '—' },
+        { label: 'Interface', value: agent.interface || 'unknown' },
+        { label: 'Last Seen', value: `${agent.last_seen_ago || 0}s ago` },
+      ]),
+    actions: [
+      actionSwitchView('Switch To Live View', agentId),
+      actionClose(),
+    ],
+  });
+}
+
+function openAlertModal(index){
+  const alert = latestAlerts[index];
+  if(!alert) return;
+
+  openDetailModal({
+    kicker: 'Alert Detail',
+    title: `${(alert.attack_type || 'unknown').replaceAll('_', ' ').toUpperCase()} Alert`,
+    subtitle: `${alert.agent_id} @ ${fmtTS(alert.timestamp)}`,
+    body:
+      renderDetailCards([
+        { label: 'Confidence', value: fmtPct(alert.confidence || 0) },
+        { label: 'Packet Rate', value: `${Math.round(alert.packet_rate || 0)} pkt/s` },
+        { label: 'Entropy', value: (alert.src_ip_entropy || 0).toFixed(2) },
+        { label: 'Agent', value: truncate(alert.agent_id, 18) },
+      ]) +
+      renderMeaningBlock('What This Section Tells You', [
+        'This section tells you why this exact alert stood out enough to be stored as a DDoS event.',
+        describeConfidence(alert.confidence || 0),
+        describePacketRate(alert.packet_rate || 0),
+      ]) +
+      `<div class="detail-copy">This popup shows the exact alert snapshot saved by the server when the model classified the incoming flow window as malicious.</div>` +
+      renderDetailRows([
+        { label: 'Location', value: alert.agent_location || '—' },
+        { label: 'Attack Type', value: (alert.attack_type || 'unknown_flood').replaceAll('_', ' ') },
+        { label: 'Byte Rate', value: `${fmtMB(alert.byte_rate || 0)} MB/s` },
+        { label: 'Scope', value: getScopeLabel(alert.agent_id) },
+      ]),
+    actions: [
+      actionSwitchView('Switch To Alert Agent', alert.agent_id),
+      actionClose(),
+    ],
+  });
+}
+
+function openFlowModal(index){
+  const flow = latestFlows[index];
+  if(!flow) return;
+  const prediction = flow.ml_prediction || {};
+
+  openDetailModal({
+    kicker: 'Flow Detail',
+    title: `Flow Window @ ${fmtTS(flow.timestamp)}`,
+    subtitle: flow.agent_id,
+    body:
+      renderDetailCards([
+        { label: 'Packet Rate', value: `${Math.round(flow.packet_rate || 0)} pkt/s` },
+        { label: 'Byte Rate', value: `${fmtMB(flow.byte_rate || 0)} MB/s` },
+        { label: 'SYN Count', value: fmtBig(flow.syn_count || 0) },
+        { label: 'ML Result', value: prediction.is_ddos ? 'DDoS' : 'Normal' },
+      ]) +
+      renderMeaningBlock('What This Section Tells You', [
+        'This section tells you what one exact flow window looked like when the system analyzed it.',
+        prediction.is_ddos
+          ? `${describeConfidence(prediction.confidence || 0)} The model currently reads this window as malicious.`
+          : 'The model currently reads this window as normal, so this is useful as a comparison against suspicious rows.',
+        'Use this popup to understand the evidence behind the prediction instead of only the final label.',
+      ]) +
+      `<div class="detail-copy">The flow popup surfaces the exact values that were used for the latest prediction, which makes it easier to explain why the model fired.</div>` +
+      renderDetailRows([
+        { label: 'Confidence', value: fmtPct(prediction.confidence || 0) },
+        { label: 'Attack Type', value: (prediction.attack_type || 'none').replaceAll('_', ' ') },
+        { label: 'TCP / UDP / ICMP', value: `${flow.tcp_count || 0} / ${flow.udp_count || 0} / ${flow.icmp_count || 0}` },
+        { label: 'Entropy', value: (flow.src_ip_entropy || 0).toFixed(2) },
+      ]),
+    actions: [
+      actionSwitchView('Switch To Flow Agent', flow.agent_id),
+      actionClose(),
+    ],
+  });
+}
+
+// ═══════════════════════════════════════
+// Rate chart (multi-line, one per agent
+//             or single line per-agent)
+// ═══════════════════════════════════════
+const rCtx  = document.getElementById('rateChart').getContext('2d');
+const MAX_P = 40;
+const rateDatasets = {}; // agent_id -> dataset index (pkt)
+const rateLabels   = [];
+
+const rateChart = new Chart(rCtx,{
+  type:'line',
+  data:{ labels:[], datasets:[] },
+  options:{
+    responsive:true, animation:{duration:200},
+    interaction:{intersect:false,mode:'index'},
+    plugins:{
+      legend:{
+        labels:{color:'#475569',font:{family:"'IBM Plex Mono'",size:9},boxWidth:8}
+      },
+      tooltip:{
+        backgroundColor:'#ffffff',borderColor:'rgba(15,23,42,0.12)',borderWidth:1,
+        titleColor:'#0f172a',bodyColor:'#475569',
+        titleFont:{family:"'IBM Plex Mono'"},bodyFont:{family:"'IBM Plex Mono'"}
+      }
+    },
+    scales:{
+      x:{ticks:{color:'#64748b',font:{family:"'IBM Plex Mono'",size:8},maxTicksLimit:6},grid:{color:'rgba(148,163,184,0.22)'}},
+      y:{ticks:{color:'#64748b',font:{family:"'IBM Plex Mono'",size:8}},grid:{color:'rgba(148,163,184,0.18)'},min:0}
+    }
+  }
+});
+
+function ensureRateDataset(agentId){
+  if(rateDatasets[agentId]!==undefined) return;
+  const color = agentColor(agentId);
+  const label = agentId.length>14 ? agentId.slice(0,12)+'…' : agentId;
+  rateDatasets[agentId] = rateChart.data.datasets.length;
+  rateChart.data.datasets.push({
+    label,
+    data:[],
+    borderColor: color,
+    backgroundColor: toRGBA(color, 0.05),
+    borderWidth:1.5,
+    pointRadius:0,
+    tension:0.4,
+    fill:false,
+  });
+}
+
+function pushRate(agentId, ts, pktRate){
+  // In per-agent mode only show that agent; in global show all
+  if(activeAgent && agentId !== activeAgent) return;
+
+  const lbl = fmtTS(ts);
+  if(!rateLabels.includes(lbl)){
+    rateLabels.push(lbl);
+    rateChart.data.labels.push(lbl);
+    if(rateChart.data.labels.length>MAX_P){
+      rateChart.data.labels.shift();
+      rateLabels.shift();
+      rateChart.data.datasets.forEach(d=>d.data.shift());
+    }
+  }
+
+  ensureRateDataset(agentId);
+  const di = rateDatasets[agentId];
+  const idx = rateChart.data.labels.length-1;
+  while(rateChart.data.datasets[di].data.length<=idx)
+    rateChart.data.datasets[di].data.push(null);
+  rateChart.data.datasets[di].data[idx]=Math.round(pktRate);
+  rateChart.update('none');
+}
+
+// ═══════════════════════════════════════
+// Protocol donut
+// ═══════════════════════════════════════
+const protoChart = new Chart(
+  document.getElementById('protoChart').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:['TCP','UDP','ICMP'],
+      datasets:[{
+        data:[0,0,0],
+        backgroundColor:['rgba(29,78,216,0.72)','rgba(180,83,9,0.72)','rgba(15,118,110,0.70)'],
+        borderColor:['#1d4ed8','#b45309','#0f766e'],
+        borderWidth:1,hoverOffset:4,
+      }]
+    },
+    options:{
+      cutout:'72%',responsive:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#ffffff',borderColor:'rgba(15,23,42,0.12)',borderWidth:1,
+          titleColor:'#0f172a',bodyColor:'#475569',
+          titleFont:{family:"'IBM Plex Mono'"},bodyFont:{family:"'IBM Plex Mono'"}}
+      }
+    }
+  }
+);
+
+function updateProto(tcp,udp,icmp){
+  protoChart.data.datasets[0].data=[tcp,udp,icmp];
+  protoChart.update();
+  const total=tcp+udp+icmp||1;
+  const items=[{l:'TCP',v:tcp,c:'#1d4ed8'},{l:'UDP',v:udp,c:'#b45309'},{l:'ICMP',v:icmp,c:'#0f766e'}];
+  document.getElementById('proto-legend').innerHTML=items.map(i=>
+    `<li><span class="legend-sq" style="background:${i.c}"></span>${i.l}
+     <span class="legend-val">${fmtBig(i.v)} (${(i.v/total*100).toFixed(1)}%)</span></li>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════
+// Attack type donut
+// ═══════════════════════════════════════
+const ATK_CLR={
+  syn_flood:  ['rgba(124,58,237,0.68)','#7c3aed'],
+  udp_flood:  ['rgba(180,83,9,0.68)',  '#b45309'],
+  icmp_flood: ['rgba(15,118,110,0.68)','#0f766e'],
+  http_flood: ['rgba(21,128,61,0.68)','#15803d'],
+  unknown_flood:['rgba(100,116,139,0.45)','#64748b'],
+};
+const attackChart = new Chart(
+  document.getElementById('attackChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:[],datasets:[{data:[],backgroundColor:[],borderColor:[],borderWidth:1,hoverOffset:4}]},
+    options:{
+      cutout:'72%',responsive:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#ffffff',borderColor:'rgba(15,23,42,0.12)',borderWidth:1,
+          titleColor:'#0f172a',bodyColor:'#475569',
+          titleFont:{family:"'IBM Plex Mono'"},bodyFont:{family:"'IBM Plex Mono'"}}
+      }
+    }
+  }
+);
+
+function updateAttackChart(byType){
+  const keys=Object.keys(byType);
+  if(!keys.length){
+    attackChart.data.labels=[];
+    attackChart.data.datasets[0].data=[];
+    attackChart.data.datasets[0].backgroundColor=[];
+    attackChart.data.datasets[0].borderColor=[];
+    attackChart.update();
+    document.getElementById('attack-legend').innerHTML=
+      '<li><span class="legend-sq" style="background:#64748b"></span>NO ATTACKS<span class="legend-val">0</span></li>';
+    return;
+  }
+  attackChart.data.labels=keys;
+  attackChart.data.datasets[0].data=keys.map(k=>byType[k].count);
+  attackChart.data.datasets[0].backgroundColor=keys.map(k=>(ATK_CLR[k]||ATK_CLR.unknown_flood)[0]);
+  attackChart.data.datasets[0].borderColor=keys.map(k=>(ATK_CLR[k]||ATK_CLR.unknown_flood)[1]);
+  attackChart.update();
+  const total=keys.reduce((s,k)=>s+byType[k].count,0)||1;
+  document.getElementById('attack-legend').innerHTML=keys.map((k,i)=>{
+    const c=(ATK_CLR[k]||ATK_CLR.unknown_flood)[1];
+    return `<li><span class="legend-sq" style="background:${c}"></span>${k.replace('_',' ')}
+      <span class="legend-val">${byType[k].count} (${(byType[k].count/total*100).toFixed(0)}%)</span></li>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// Sidebar rendering
+// ═══════════════════════════════════════
+function renderSidebar(agents){
+  const online  = agents.filter(a=>a.online).length;
+  const total   = agents.length;
+  document.getElementById('agent-count-badge').textContent = `${online}/${total}`;
+
+  let html = `
+    <div class="agent-item ${activeAgent===null?'active':''}" onclick="selectGlobal()">
+      <div class="agent-color-dot" style="background:#64748b;opacity:0.45"></div>
+      <div class="agent-info">
+        <div class="agent-name">ALL AGENTS</div>
+        <div class="agent-meta">${total} registered · ${online} online</div>
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>`;
+
+  agents.forEach(a=>{
+    const color   = agentColor(a.agent_id);
+    const isActive= activeAgent===a.agent_id;
+    const tCls    = `threat-${a.threat_level||'low'}`;
+    const offCls  = a.online?'':'agent-offline';
+    html += `
+      <div class="agent-item ${isActive?'active':''} ${tCls} ${offCls}"
+           onclick="selectAgent('${a.agent_id}')">
+        <div class="agent-color-dot" style="background:${color}"></div>
+        <div class="agent-info">
+          <div class="agent-name">${truncate(a.agent_id,18)}</div>
+          <div class="agent-meta">${truncate(a.agent_location||'—',22)}</div>
+        </div>
+        <div class="agent-right">
+          <div class="online-dot ${a.online?'on':'off'}"></div>
+          <div class="threat-chip ${tCls}">${(a.threat_level||'low').toUpperCase()}</div>
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('sidebar-list').innerHTML = html;
+}
+
+function truncate(s,n){ return s && s.length>n ? s.slice(0,n-1)+'…' : s||''; }
+
+// ═══════════════════════════════════════
+// Agent cards grid (global view)
+// ═══════════════════════════════════════
+function renderAgentCards(agents){
+  const panel = document.getElementById('agent-cards-panel');
+  const grid  = document.getElementById('agent-cards-grid');
+  const tag   = document.getElementById('agent-cards-tag');
+
+  if(activeAgent){
+    panel.style.display='none';
+    return;
+  }
+  panel.style.display='';
+  tag.textContent = `${agents.length} NODES`;
+
+  if(!agents.length){
+    grid.innerHTML='<div class="empty">NO AGENTS REGISTERED</div>';
+    return;
+  }
+
+  grid.innerHTML = agents.map(a=>{
+    const color   = agentColor(a.agent_id);
+    const tCls    = `threat-${a.threat_level||'low'}`;
+    const barColor= a.threat_level==='high'||a.threat_level==='critical'?'var(--red)':
+                    a.threat_level==='medium'?'var(--amber)':color;
+    const ratio   = a.total_flows>0?(a.ddos_events/a.total_flows*100).toFixed(1):0;
+    return `
+      <div class="agent-card ${tCls}" onclick="openAgentModal('${a.agent_id}')">
+        <div class="agent-card-bar" style="background:${barColor}"></div>
+        <div class="agent-card-top">
+          <div class="agent-color-dot" style="background:${color};width:8px;height:8px;border-radius:50%;flex-shrink:0"></div>
+          <div class="agent-card-id">${truncate(a.agent_id,20)}</div>
+          <div class="online-dot ${a.online?'on':'off'}"></div>
+        </div>
+        <div class="agent-card-loc">${truncate(a.agent_location||'—',26)}</div>
+        <div class="agent-card-stats">
+          <div>
+            <div class="agent-card-stat-label">FLOWS</div>
+            <div class="agent-card-stat-val">${fmtBig(a.total_flows||0)}</div>
+          </div>
+          <div>
+            <div class="agent-card-stat-label">DDOS</div>
+            <div class="agent-card-stat-val ${(a.ddos_events||0)>0?'red':''}">${fmtBig(a.ddos_events||0)}</div>
+          </div>
+          <div>
+            <div class="agent-card-stat-label">THREAT</div>
+            <div class="agent-card-stat-val"><span class="threat-chip ${tCls}">${(a.threat_level||'low').toUpperCase()}</span></div>
+          </div>
+          <div>
+            <div class="agent-card-stat-label">DDOS %</div>
+            <div class="agent-card-stat-val ${ratio>5?'red':''}">${ratio}%</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// View selection
+// ═══════════════════════════════════════
+function selectGlobal(){
+  activeAgent = null;
+  document.getElementById('view-title').textContent = 'GLOBAL VIEW';
+  document.getElementById('view-sub').textContent   = 'All agents — aggregated';
+  resetScopeState();
+  refresh();
+}
+
+function selectAgent(id){
+  activeAgent = id;
+  const a   = agentRegistry[id];
+  const loc = a ? a.agent_location : id;
+  document.getElementById('view-title').textContent = truncate(id, 28).toUpperCase();
+  document.getElementById('view-sub').textContent   = loc || id;
+  resetScopeState();
+  refresh();
+}
+
+// ═══════════════════════════════════════
+// Global threat level
+// ═══════════════════════════════════════
+function updateThreat(ddos,total){
+  const el=document.getElementById('global-threat');
+  const r=total>0?ddos/total:0;
+  const[level,cls]=r>0.5?['CRITICAL','critical']:r>0.2?['HIGH','high']:r>0.05?['MEDIUM','medium']:['LOW',''];
+  el.textContent=`THREAT: ${level}`;
+  el.className=cls;
+}
+
+// ═══════════════════════════════════════
+// Alerts table
+// ═══════════════════════════════════════
+function renderAlerts(alerts){
+  latestAlerts = alerts;
+  document.getElementById('alerts-total-tag').textContent=`${alerts.length} TOTAL`;
+  const tbody=document.getElementById('alerts-body');
+  if(!alerts.length){
+    tbody.innerHTML='<tr><td colspan="6"><div class="empty">AWAITING ALERTS</div></td></tr>';
+    return;
+  }
+
+  const previousLatest = lastAlertTs;
+  tbody.innerHTML = alerts.map((alert, index) => {
+    const color = agentColor(alert.agent_id);
+    const isNew = alert.timestamp > previousLatest;
+    return `<tr class="${isNew ? 'new-row' : ''}" data-ts="${alert.timestamp}" onclick="openAlertModal(${index})">
+      <td><span class="agent-tag" style="background:${color}"></span>${truncate(alert.agent_id,12)}</td>
+      <td>${fmtTS(alert.timestamp)}</td>
+      <td>${attackBadge(alert.attack_type)}</td>
+      <td><div class="cbar">
+        <div class="cbar-bg"><div class="cbar-fill" style="width:${((alert.confidence||0)*100).toFixed(0)}%"></div></div>
+        <span class="cbar-txt">${fmtPct(alert.confidence)}</span>
+      </div></td>
+      <td>${Math.round(alert.packet_rate||0)}</td>
+      <td>${(alert.src_ip_entropy||0).toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
+  lastAlertTs = Math.max(previousLatest, ...alerts.map(alert => alert.timestamp));
+}
+
+// ═══════════════════════════════════════
+// Flows table
+// ═══════════════════════════════════════
+function renderFlows(flows, total){
+  latestFlows = flows;
+  document.getElementById('flows-total-tag').textContent=`${fmtBig(total)} RECORDS`;
+
+  const tbody=document.getElementById('flows-body');
+  if(!flows.length){
+    tbody.innerHTML='<tr><td colspan="6"><div class="empty">AWAITING FLOWS</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML=flows.map((f, index)=>{
+    const color=agentColor(f.agent_id);
+    const pred=f.ml_prediction||{};
+    const ml=pred.is_ddos
+      ?`<span class="badge bd-ddos">DDOS ${fmtPct(pred.confidence||0)}</span>`
+      :`<span class="badge bd-normal">OK</span>`;
+    return `<tr onclick="openFlowModal(${index})">
+      <td><span class="agent-tag" style="background:${color}"></span>${truncate(f.agent_id,12)}</td>
+      <td>${fmtTS(f.timestamp)}</td>
+      <td>${Math.round(f.packet_rate||0)}</td>
+      <td>${fmtMB(f.byte_rate||0)}</td>
+      <td>${Math.round(f.syn_count||0)}</td>
+      <td>${ml}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// API polling
+// ═══════════════════════════════════════
+async function fetchHealth(){
+  try{
+    const resp=await fetch(`${API}/api/health`);
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d=await resp.json();
+    latestHealth = d;
+    const dbOk=d.status==='ok', mlOk=d.ml_model==='ready';
+    const dbEl=document.getElementById('h-db');
+    const mlEl=document.getElementById('h-ml');
+    const agEl=document.getElementById('h-agents');
+    dbEl.className='hdr-pill '+(dbOk?'ok':'error');
+    mlEl.className='hdr-pill '+(mlOk?'ok':'warn');
+    agEl.className='hdr-pill '+(d.online_agents>0?'ok':'warn');
+    document.getElementById('h-agent-txt').textContent=`${d.online_agents||0} ONLINE`;
+
+    const strip=document.getElementById('ml-strip');
+    const txt=document.getElementById('ml-strip-txt');
+    strip.className='ml-strip'+(mlOk?'':' bad');
+    txt.textContent=mlOk?'ML MODEL READY — RandomForest active':'ML MODEL UNAVAILABLE — run: python ml_model.py';
+  }catch(e){
+    ['h-db','h-ml','h-agents'].forEach(id=>{ document.getElementById(id).className='hdr-pill error'; });
+    toast('⚠ Cannot reach server at '+API);
+  }
+}
+
+async function fetchAgents(){
+  try{
+    const resp = await fetch(`${API}/api/agents`);
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d=await resp.json();
+    const agents=d.agents||[];
+    latestAgents = agents;
+    agentRegistry = {};
+    agents.forEach(a=>{ agentRegistry[a.agent_id]=a; });
+    if(activeAgent && !agentRegistry[activeAgent]){
+      activeAgent = null;
+      document.getElementById('view-title').textContent = 'GLOBAL VIEW';
+      document.getElementById('view-sub').textContent   = 'All agents — aggregated';
+      resetScopeState();
+      toast('Selected agent is unavailable. Switched to global view.');
+    }
+    renderSidebar(agents);
+    renderAgentCards(agents);
+    return agents;
+  }catch(e){
+    console.error('fetchAgents error:', e);
+    return [];
+  }
+}
+
+async function fetchStats(){
+  try{
+    const scope=activeAgent;
+    const url=scope?`${API}/api/stats?agent_id=${encodeURIComponent(scope)}`:`${API}/api/stats`;
+    const resp=await fetch(url);
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d=await resp.json();
+    if(scope!==activeAgent) return;
+    latestStats = d;
+    document.getElementById('s-pkt').textContent   =fmtBig(d.total_packets||0);
+    document.getElementById('s-prate').textContent =`${(d.avg_packet_rate||0).toFixed(0)} pkt/s avg`;
+    document.getElementById('s-bytes').textContent =fmtBig(d.total_bytes||0)+'B';
+    document.getElementById('s-brate').textContent =`${fmtMB(d.avg_byte_rate||0)} MB/s avg`;
+    document.getElementById('s-flows').textContent =fmtBig(d.total_flows||0);
+    document.getElementById('s-ddos').textContent  =fmtBig(d.total_ddos_events||0);
+    document.getElementById('s-alerts').textContent=`${fmtBig(d.total_alerts_saved||0)} alerts`;
+    document.getElementById('s-syn').textContent   =fmtBig(d.max_syn_count||0);
+
+    updateAttackChart(d.ddos_by_type||{});
+    updateThreat(d.total_ddos_events||0, d.total_flows||1);
+  }catch(e){ console.error('fetchStats error:', e); }
+}
+
+async function fetchFlows(){
+  try{
+    const scope=activeAgent;
+    const url=scope
+      ?`${API}/api/flows?limit=30&agent_id=${encodeURIComponent(scope)}`
+      :`${API}/api/flows?limit=30`;
+    const resp=await fetch(url);
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d=await resp.json();
+    if(scope!==activeAgent) return;
+    const flows=d.flows||[];
+    renderFlows(flows, d.total||0);
+
+    const newFlows=flows.filter(f=>f.timestamp>lastFlowTs).reverse();
+    newFlows.forEach(f=>pushRate(f.agent_id, f.timestamp, f.packet_rate||0));
+    if(newFlows.length) lastFlowTs=Math.max(...newFlows.map(f=>f.timestamp));
+
+    if(flows.length){
+      const lat=flows[0];
+      updateProto(lat.tcp_count||0, lat.udp_count||0, lat.icmp_count||0);
+    }else{
+      updateProto(0,0,0);
+    }
+  }catch(e){ console.error('fetchFlows error:', e); }
+}
+
+async function fetchAlerts(){
+  try{
+    const scope=activeAgent;
+    const url=scope
+      ?`${API}/api/alerts?limit=50&agent_id=${encodeURIComponent(scope)}`
+      :`${API}/api/alerts?limit=50`;
+    const resp=await fetch(url);
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d=await resp.json();
+    if(scope!==activeAgent) return;
+    latestAlerts = d.alerts||[];
+    renderAlerts(d.alerts||[]);
+  }catch(e){ console.error('fetchAlerts error:', e); }
+}
+
+// ═══════════════════════════════════════
+// Export
+// ═══════════════════════════════════════
+function exportCSV(){
+  const url=activeAgent
+    ?`${API}/api/flows/export?agent_id=${encodeURIComponent(activeAgent)}`
+    :`${API}/api/flows/export`;
+  window.open(url,'_blank');
+}
+
+// ═══════════════════════════════════════
+// Refresh loop
+// ═══════════════════════════════════════
+async function refresh(){
+  await fetchHealth();
+  await fetchAgents();
+  await Promise.all([fetchStats(), fetchFlows(), fetchAlerts()]);
+}
+
+refresh();
+setInterval(refresh, POLL);
+document.addEventListener('keydown', (event) => {
+  if(event.key === 'Escape') closeDetailModal();
+});
+</script>
+</body>
+</html>
